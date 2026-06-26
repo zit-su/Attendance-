@@ -12,11 +12,13 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-const db = firebase.database(); // ✅ Realtime Database
+const db = firebase.database();
 
-// ========== PERSISTENCE ==========
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-    .catch(err => console.error('Persistence error:', err));
+// ========== FORCE HIDE SPLASH AFTER TIMEOUT ==========
+setTimeout(() => {
+    document.getElementById('splashScreen').classList.add('hidden');
+    console.log('⚠️ Splash force-hidden after timeout');
+}, 5000);
 
 // ========== GLOBAL STATE ==========
 let currentUser = null;
@@ -29,12 +31,22 @@ const screens = ['splashScreen', 'authScreen', 'verifyScreen', 'appScreen'];
 
 // ========== UTILS ==========
 function showScreen(id) {
-    screens.forEach(s => document.getElementById(s).classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
+    console.log('📱 Showing screen:', id);
+    screens.forEach(s => {
+        const el = document.getElementById(s);
+        if (el) el.classList.add('hidden');
+    });
+    const target = document.getElementById(id);
+    if (target) {
+        target.classList.remove('hidden');
+    } else {
+        console.error('❌ Screen not found:', id);
+    }
 }
 
 function showToast(msg) {
     const t = document.getElementById('toast');
+    if (!t) return;
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
@@ -58,14 +70,16 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const password = document.getElementById('loginPassword').value;
     const btn = document.getElementById('loginBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+    btn.innerHTML = '<span>Signing In...</span>';
     try {
         const cred = await auth.signInWithEmailAndPassword(email, password);
+        console.log('✅ Login successful:', cred.user.email);
         if (!cred.user.emailVerified) {
             showScreen('verifyScreen');
             document.getElementById('verifyEmailDisplay').textContent = email;
         }
     } catch (err) {
+        console.error('❌ Login error:', err);
         showAuthMsg(getError(err), 'error');
     }
     btn.disabled = false;
@@ -79,18 +93,25 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     const password = document.getElementById('regPassword').value;
     const btn = document.getElementById('registerBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+    btn.innerHTML = '<span>Creating...</span>';
     try {
         const cred = await auth.createUserWithEmailAndPassword(email, password);
-        // Save to Realtime DB under /users/$userId
+        console.log('✅ Account created:', cred.user.uid);
+        
+        // Save to Realtime DB
         await db.ref('users/' + cred.user.uid).set({
             name, email, role: 'user',
             createdAt: firebase.database.ServerValue.TIMESTAMP
         });
+        console.log('✅ User saved to DB');
+        
         await cred.user.sendEmailVerification();
+        console.log('✅ Verification email sent');
+        
         showScreen('verifyScreen');
         document.getElementById('verifyEmailDisplay').textContent = email;
     } catch (err) {
+        console.error('❌ Register error:', err);
         showAuthMsg(getError(err), 'error');
     }
     btn.disabled = false;
@@ -100,13 +121,19 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
 document.getElementById('checkVerifiedBtn').addEventListener('click', async () => {
     const btn = document.getElementById('checkVerifiedBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-    await auth.currentUser.reload();
-    if (auth.currentUser.emailVerified) {
-        isVerified = true;
-        await initApp();
-    } else {
-        showToast('⚠️ Not verified yet. Check your inbox & spam folder.');
+    btn.innerHTML = '<span>Checking...</span>';
+    try {
+        await auth.currentUser.reload();
+        if (auth.currentUser.emailVerified) {
+            isVerified = true;
+            console.log('✅ Email verified!');
+            await initApp();
+        } else {
+            showToast('⚠️ Not verified yet. Check inbox & spam folder.');
+        }
+    } catch (err) {
+        console.error('❌ Check error:', err);
+        showToast('Error checking verification status');
     }
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-check-circle"></i> I\'ve Verified';
@@ -116,10 +143,15 @@ document.getElementById('resendVerifyBtn').addEventListener('click', async () =>
     try {
         await auth.currentUser.sendEmailVerification();
         showToast('📧 Verification email sent!');
-    } catch (err) { showToast('❌ ' + err.message); }
+    } catch (err) { 
+        console.error('❌ Resend error:', err);
+        showToast('❌ ' + err.message); 
+    }
 });
 
-document.getElementById('verifyLogoutBtn').addEventListener('click', () => auth.signOut());
+document.getElementById('verifyLogoutBtn').addEventListener('click', () => {
+    auth.signOut();
+});
 
 document.getElementById('resendFromLogin').addEventListener('click', () => {
     const email = document.getElementById('loginEmail').value.trim();
@@ -127,14 +159,15 @@ document.getElementById('resendFromLogin').addEventListener('click', () => {
         showAuthMsg('Enter your email first.', 'info');
         return;
     }
-    showAuthMsg('Login first, then use "Resend" from the verification screen.', 'info');
+    showAuthMsg('Login first, then use "Resend" from verification screen.', 'info');
 });
 
 function showAuthMsg(msg, type) {
     const el = document.getElementById('authMessage');
+    if (!el) return;
     el.textContent = msg;
     el.className = 'auth-message ' + type;
-    setTimeout(() => el.className = 'auth-message', 5000);
+    setTimeout(() => { el.className = 'auth-message'; }, 5000);
 }
 
 function getError(err) {
@@ -144,8 +177,9 @@ function getError(err) {
         'auth/email-already-in-use': 'This email is already registered',
         'auth/weak-password': 'Password must be at least 6 characters',
         'auth/invalid-email': 'Please enter a valid email',
-        'auth/too-many-requests': 'Too many attempts. Please wait a moment.',
-        'auth/network-request-failed': 'Network error. Check your connection.'
+        'auth/too-many-requests': 'Too many attempts. Please wait.',
+        'auth/network-request-failed': 'Network error. Check connection.',
+        'auth/invalid-credential': 'Invalid email or password'
     };
     return map[err.code] || err.message;
 }
@@ -186,16 +220,26 @@ document.getElementById('headerAdminBtn').addEventListener('click', () => {
 
 // ========== INIT APP ==========
 async function initApp() {
+    console.log('🚀 Initializing app...');
     currentUser = auth.currentUser;
+    
+    if (!currentUser) {
+        console.error('❌ No current user');
+        showScreen('authScreen');
+        return;
+    }
+    
     isVerified = currentUser.emailVerified;
+    console.log('👤 User:', currentUser.email, '| Verified:', isVerified);
 
-    // Get user role from /users/$uid
+    // Get user role
     try {
         const snap = await db.ref('users/' + currentUser.uid).once('value');
         if (snap.exists()) {
             userRole = snap.val().role || 'user';
+            console.log('✅ Role:', userRole);
         } else {
-            // Create user profile if missing
+            // Create user profile
             await db.ref('users/' + currentUser.uid).set({
                 name: currentUser.displayName || currentUser.email,
                 email: currentUser.email,
@@ -203,19 +247,24 @@ async function initApp() {
                 createdAt: firebase.database.ServerValue.TIMESTAMP
             });
             userRole = 'user';
+            console.log('✅ Created user profile');
         }
     } catch (e) {
-        console.error('Role fetch error:', e);
+        console.error('❌ Role fetch error:', e);
         userRole = 'user';
     }
 
     // Save session
-    localStorage.setItem('ae_user', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, role: userRole }));
+    localStorage.setItem('ae_user', JSON.stringify({ 
+        uid: currentUser.uid, 
+        email: currentUser.email, 
+        role: userRole 
+    }));
 
-    // Show app
+    // Show app screen
     showScreen('appScreen');
 
-    // Set header
+    // Update header
     document.getElementById('appAvatar').textContent = (currentUser.email || 'U')[0].toUpperCase();
     document.getElementById('appRole').textContent = userRole === 'admin' ? 'Admin' : 'Employee';
     document.getElementById('verifyBadge').textContent = isVerified ? '✓ Verified' : '⚠ Unverified';
@@ -226,32 +275,39 @@ async function initApp() {
     document.getElementById('headerAdminBtn').style.display = isAdmin ? 'flex' : 'none';
     document.getElementById('navAdmin').style.display = isAdmin ? 'flex' : 'none';
 
-    // Default view
+    // Default views
     document.getElementById('userView').classList.remove('hidden');
     document.getElementById('adminView').classList.add('hidden');
     document.querySelector('.nav-item[data-view="userView"]').classList.add('active');
-    document.getElementById('navAdmin').classList.remove('active');
+    if (document.getElementById('navAdmin')) {
+        document.getElementById('navAdmin').classList.remove('active');
+    }
 
     // Get user name
     try {
         const snap = await db.ref('users/' + currentUser.uid).once('value');
         if (snap.exists()) {
-            document.getElementById('appName').textContent = snap.val().name || currentUser.email;
-            document.getElementById('appAvatar').textContent = (snap.val().name || 'U')[0].toUpperCase();
+            const name = snap.val().name || currentUser.email;
+            document.getElementById('appName').textContent = name;
+            document.getElementById('appAvatar').textContent = name[0].toUpperCase();
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error('❌ Name fetch error:', e);
+    }
 
     // Set date
     document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', {
         weekday: 'long', month: 'short', day: 'numeric'
     });
 
+    console.log('✅ App initialized');
+
     await checkToday();
     await loadHistory();
     if (isAdmin) await loadAdminData();
 }
 
-// ========== CHECK TODAY'S ATTENDANCE ==========
+// ========== CHECK TODAY ==========
 async function checkToday() {
     const today = getTodayStr();
     const checkInBtn = document.getElementById('checkInBtn');
@@ -260,7 +316,6 @@ async function checkToday() {
     const timeInfo = document.getElementById('checkTimeInfo');
 
     try {
-        // Query attendance for this user today
         const snap = await db.ref('attendance')
             .orderByChild('userId_date')
             .equalTo(currentUser.uid + '_' + today)
@@ -286,14 +341,14 @@ async function checkToday() {
             timeInfo.textContent = '';
         }
     } catch (err) {
-        console.error('Check today error:', err);
+        console.error('❌ Check today error:', err);
     }
 }
 
-// ========== CHECK IN / OUT ==========
+// ========== CHECK IN ==========
 document.getElementById('checkInBtn').addEventListener('click', async () => {
     if (!isVerified) {
-        showToast('⚠️ Please verify your email first!');
+        showToast('⚠️ Verify your email first!');
         return;
     }
     const btn = document.getElementById('checkInBtn');
@@ -303,14 +358,12 @@ document.getElementById('checkInBtn').addEventListener('click', async () => {
     const status = now.getHours() >= 9 ? 'late' : 'on-time';
 
     try {
-        // Get user name
         let userName = currentUser.email;
         const userSnap = await db.ref('users/' + currentUser.uid).once('value');
         if (userSnap.exists()) {
             userName = userSnap.val().name || currentUser.email;
         }
 
-        // Create attendance record
         const newRef = db.ref('attendance').push();
         await newRef.set({
             userId: currentUser.uid,
@@ -325,19 +378,20 @@ document.getElementById('checkInBtn').addEventListener('click', async () => {
             createdAt: firebase.database.ServerValue.TIMESTAMP
         });
 
-        showToast('✅ Checked in successfully!');
+        showToast('✅ Checked in!');
         await checkToday();
         await loadHistory();
     } catch (err) {
-        console.error('Check-in error:', err);
-        showToast('❌ Error: ' + err.message);
+        console.error('❌ Check-in error:', err);
+        showToast('❌ ' + err.message);
     }
     btn.disabled = false;
 });
 
+// ========== CHECK OUT ==========
 document.getElementById('checkOutBtn').addEventListener('click', async () => {
     if (!todayAttendanceId) {
-        showToast('⚠️ No check-in record found for today');
+        showToast('⚠️ No check-in found');
         return;
     }
     const btn = document.getElementById('checkOutBtn');
@@ -346,20 +400,21 @@ document.getElementById('checkOutBtn').addEventListener('click', async () => {
         await db.ref('attendance/' + todayAttendanceId).update({
             checkOutTime: new Date().toISOString()
         });
-        showToast('🏁 Checked out! Have a great day!');
+        showToast('🏁 Checked out!');
         await checkToday();
         await loadHistory();
     } catch (err) {
-        console.error('Check-out error:', err);
-        showToast('❌ Error: ' + err.message);
+        console.error('❌ Check-out error:', err);
+        showToast('❌ ' + err.message);
     }
     btn.disabled = false;
 });
 
-// ========== MY HISTORY ==========
+// ========== HISTORY ==========
 async function loadHistory() {
     const list = document.getElementById('myHistoryList');
-    list.innerHTML = '<div class="list-empty"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    if (!list) return;
+    list.innerHTML = '<div class="list-empty">Loading...</div>';
 
     try {
         const snap = await db.ref('attendance')
@@ -368,18 +423,17 @@ async function loadHistory() {
             .once('value');
 
         if (!snap.exists()) {
-            list.innerHTML = '<div class="list-empty">📭 No attendance records yet</div>';
+            list.innerHTML = '<div class="list-empty">No records yet</div>';
             return;
         }
 
-        // Convert to array and sort by date (newest first)
         const records = Object.entries(snap.val())
             .map(([id, data]) => ({ id, ...data }))
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             .slice(0, 30);
 
         if (records.length === 0) {
-            list.innerHTML = '<div class="list-empty">📭 No attendance records yet</div>';
+            list.innerHTML = '<div class="list-empty">No records yet</div>';
             return;
         }
 
@@ -389,10 +443,9 @@ async function loadHistory() {
             list.innerHTML += `
                 <div class="list-item">
                     <div class="list-item-left">
-                        <span class="list-item-title">📅 ${record.date || 'N/A'}</span>
+                        <span class="list-item-title">${record.date || 'N/A'}</span>
                         <span class="list-item-subtitle">
-                            🟢 ${formatTime(record.checkInTime)} → 
-                            ${record.checkOutTime ? '🔴 ' + formatTime(record.checkOutTime) : '⏳ Waiting'}
+                            ${formatTime(record.checkInTime)} → ${formatTime(record.checkOutTime) || '--'}
                         </span>
                     </div>
                     <div class="list-item-right">
@@ -402,8 +455,8 @@ async function loadHistory() {
                 </div>`;
         });
     } catch (err) {
-        console.error('History error:', err);
-        list.innerHTML = '<div class="list-empty">❌ Error loading history</div>';
+        console.error('❌ History error:', err);
+        list.innerHTML = '<div class="list-empty">Error loading</div>';
     }
 }
 
@@ -414,60 +467,48 @@ async function loadAdminData() {
 
 async function loadStats() {
     try {
-        // Total users
         const usersSnap = await db.ref('users').once('value');
-        document.getElementById('statTotalUsers').querySelector('.stat-num').textContent = 
-            usersSnap.numChildren();
+        document.getElementById('statTotalUsers').querySelector('.stat-num').textContent = usersSnap.numChildren();
 
-        // Today's check-ins
         const today = getTodayStr();
-        const todaySnap = await db.ref('attendance')
-            .orderByChild('date')
-            .equalTo(today)
-            .once('value');
-        document.getElementById('statTodayCheckins').querySelector('.stat-num').textContent = 
-            todaySnap.numChildren();
+        const todaySnap = await db.ref('attendance').orderByChild('date').equalTo(today).once('value');
+        document.getElementById('statTodayCheckins').querySelector('.stat-num').textContent = todaySnap.numChildren();
 
-        // Total records
         const allSnap = await db.ref('attendance').once('value');
-        document.getElementById('statTotalRecords').querySelector('.stat-num').textContent = 
-            allSnap.numChildren();
+        document.getElementById('statTotalRecords').querySelector('.stat-num').textContent = allSnap.numChildren();
 
-        // Average check-in time
         if (todaySnap.exists()) {
-            let totalHours = 0, count = 0;
+            let total = 0, count = 0;
             todaySnap.forEach(child => {
                 const data = child.val();
                 if (data.checkInTime) {
-                    const hour = new Date(data.checkInTime).getHours();
-                    totalHours += hour;
+                    total += new Date(data.checkInTime).getHours();
                     count++;
                 }
             });
             if (count > 0) {
-                const avg = Math.round(totalHours / count);
+                const avg = Math.round(total / count);
                 const display = avg > 12 ? avg - 12 : (avg === 0 ? 12 : avg);
                 const ampm = avg >= 12 ? 'PM' : 'AM';
-                document.getElementById('statAvgCheckin').querySelector('.stat-num').textContent = 
-                    `${display}:00 ${ampm}`;
+                document.getElementById('statAvgCheckin').querySelector('.stat-num').textContent = `${display}:00 ${ampm}`;
             }
         }
     } catch (err) {
-        console.error('Stats error:', err);
+        console.error('❌ Stats error:', err);
     }
 }
 
 async function loadUsers() {
     const list = document.getElementById('adminUsersList');
-    list.innerHTML = '<div class="list-empty"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    if (!list) return;
+    list.innerHTML = '<div class="list-empty">Loading...</div>';
 
     try {
         const snap = await db.ref('users').once('value');
         if (!snap.exists()) {
-            list.innerHTML = '<div class="list-empty">👥 No users found</div>';
+            list.innerHTML = '<div class="list-empty">No users</div>';
             return;
         }
-
         list.innerHTML = '';
         snap.forEach(child => {
             const user = child.val();
@@ -482,70 +523,59 @@ async function loadUsers() {
                     <div class="list-item-right">
                         <span class="chip ${roleClass}" style="font-size:10px;">${user.role || 'user'}</span>
                         <div class="list-item-actions">
-                            <button class="btn-xs btn-xs-edit" onclick="editUser('${uid}')">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-xs btn-xs-del" onclick="deleteUser('${uid}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <button class="btn-xs btn-xs-edit" onclick="editUser('${uid}')">✏️</button>
+                            <button class="btn-xs btn-xs-del" onclick="deleteUser('${uid}')">🗑️</button>
                         </div>
                     </div>
                 </div>`;
         });
     } catch (err) {
-        console.error('Users error:', err);
-        list.innerHTML = '<div class="list-empty">❌ Error loading users</div>';
+        console.error('❌ Users error:', err);
     }
 }
 
 async function loadRecords() {
     const list = document.getElementById('adminRecordsList');
-    list.innerHTML = '<div class="list-empty"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    if (!list) return;
+    list.innerHTML = '<div class="list-empty">Loading...</div>';
 
     try {
         const dateFilter = document.getElementById('filterDate').value;
         const userFilter = document.getElementById('filterUser').value.trim().toLowerCase();
         const typeFilter = document.getElementById('filterType').value;
 
-        let query = db.ref('attendance');
+        let snap;
         if (dateFilter) {
-            query = query.orderByChild('date').equalTo(dateFilter);
+            snap = await db.ref('attendance').orderByChild('date').equalTo(dateFilter).once('value');
+        } else {
+            snap = await db.ref('attendance').limitToLast(100).once('value');
         }
 
-        const snap = await query.once('value');
-        
         if (!snap.exists()) {
-            list.innerHTML = '<div class="list-empty">📋 No records found</div>';
+            list.innerHTML = '<div class="list-empty">No records</div>';
             return;
         }
 
-        // Get all records and sort by date
         const records = Object.entries(snap.val())
             .map(([id, data]) => ({ id, ...data }))
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
         list.innerHTML = '';
         let shown = 0;
-
         records.forEach(record => {
-            // Apply filters
             if (userFilter) {
                 const nameMatch = (record.userName || '').toLowerCase().includes(userFilter);
                 const emailMatch = (record.userEmail || '').toLowerCase().includes(userFilter);
                 if (!nameMatch && !emailMatch) return;
             }
             if (typeFilter && record.type !== typeFilter) return;
-
             shown++;
             const statusClass = record.status === 'on-time' ? 'chip-success' : 'chip-warning';
             list.innerHTML += `
                 <div class="list-item">
                     <div class="list-item-left">
                         <span class="list-item-title">${record.userName || 'N/A'}</span>
-                        <span class="list-item-subtitle">
-                            ${record.date || ''} • ${formatTime(record.checkInTime)}
-                            ${record.checkOutTime ? ' → ' + formatTime(record.checkOutTime) : ''}
-                        </span>
+                        <span class="list-item-subtitle">${record.date} • ${formatTime(record.checkInTime)}</span>
                     </div>
                     <div class="list-item-right">
                         <span class="chip chip-info" style="font-size:10px;">${record.type || 'full-day'}</span>
@@ -553,17 +583,13 @@ async function loadRecords() {
                     </div>
                 </div>`;
         });
-
-        if (shown === 0) {
-            list.innerHTML = '<div class="list-empty">📋 No matching records</div>';
-        }
+        if (shown === 0) list.innerHTML = '<div class="list-empty">No matching records</div>';
     } catch (err) {
-        console.error('Records error:', err);
-        list.innerHTML = '<div class="list-empty">❌ Error loading records</div>';
+        console.error('❌ Records error:', err);
     }
 }
 
-// ========== ADD USER (Admin) ==========
+// ========== ADD USER ==========
 document.getElementById('addUserForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('newUserName').value.trim();
@@ -572,29 +598,20 @@ document.getElementById('addUserForm').addEventListener('submit', async (e) => {
     const role = document.getElementById('newUserRole').value;
 
     try {
-        // Create auth account
         const cred = await auth.createUserWithEmailAndPassword(email, password);
-        
-        // Save to database
         await db.ref('users/' + cred.user.uid).set({
-            name,
-            email,
-            role,
+            name, email, role,
             createdAt: firebase.database.ServerValue.TIMESTAMP
         });
-
-        showToast('✅ User created successfully!');
+        showToast('✅ User created!');
         document.getElementById('addUserForm').reset();
         await loadUsers();
         await loadStats();
-
-        // Re-login as admin
-        const adminPass = prompt('🔐 Re-enter your admin password to continue:');
+        const adminPass = prompt('Re-enter your admin password:');
         if (adminPass) {
             await auth.signInWithEmailAndPassword(currentUser.email, adminPass);
         }
     } catch (err) {
-        console.error('Add user error:', err);
         showToast('❌ ' + getError(err));
     }
 });
@@ -603,19 +620,14 @@ document.getElementById('addUserForm').addEventListener('submit', async (e) => {
 async function editUser(uid) {
     try {
         const snap = await db.ref('users/' + uid).once('value');
-        if (!snap.exists()) {
-            showToast('User not found');
-            return;
-        }
+        if (!snap.exists()) { showToast('User not found'); return; }
         const user = snap.val();
         document.getElementById('editUserId').value = uid;
         document.getElementById('editUserName').value = user.name || '';
         document.getElementById('editUserRole').value = user.role || 'user';
-        document.getElementById('editUserType').value = 'full-day';
         document.getElementById('editModal').classList.remove('hidden');
     } catch (err) {
-        console.error('Edit user error:', err);
-        showToast('Error loading user data');
+        showToast('Error loading user');
     }
 }
 
@@ -627,52 +639,41 @@ document.getElementById('editUserForm').addEventListener('submit', async (e) => 
     const type = document.getElementById('editUserType').value;
 
     try {
-        // Update user
         await db.ref('users/' + uid).update({ name, role });
-
-        // Update today's attendance type if exists
         const today = getTodayStr();
         const snap = await db.ref('attendance')
             .orderByChild('userId_date')
             .equalTo(uid + '_' + today)
             .once('value');
-
         if (snap.exists()) {
-            const attendanceId = Object.keys(snap.val())[0];
-            await db.ref('attendance/' + attendanceId).update({ type });
+            const attId = Object.keys(snap.val())[0];
+            await db.ref('attendance/' + attId).update({ type });
         }
-
-        showToast('✅ User updated!');
+        showToast('✅ Updated!');
         document.getElementById('editModal').classList.add('hidden');
         await loadUsers();
         await loadRecords();
     } catch (err) {
-        console.error('Save user error:', err);
-        showToast('❌ Error: ' + err.message);
+        showToast('❌ ' + err.message);
     }
 });
 
-// ========== DELETE USER ==========
 async function deleteUser(uid) {
-    if (!confirm('⚠️ Are you sure you want to delete this user? This cannot be undone.')) return;
-    
+    if (!confirm('Delete this user?')) return;
     try {
         await db.ref('users/' + uid).remove();
-        showToast('🗑️ User deleted');
+        showToast('🗑️ Deleted');
         await loadUsers();
         await loadStats();
     } catch (err) {
-        console.error('Delete user error:', err);
-        showToast('❌ Error: ' + err.message);
+        showToast('❌ ' + err.message);
     }
 }
 
-// ========== MODAL CLOSE ==========
 document.getElementById('closeEditModal').addEventListener('click', () => {
     document.getElementById('editModal').classList.add('hidden');
 });
 
-// Close modal when clicking outside
 document.getElementById('editModal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('editModal')) {
         document.getElementById('editModal').classList.add('hidden');
@@ -685,23 +686,28 @@ document.getElementById('filterUser').addEventListener('input', loadRecords);
 document.getElementById('filterType').addEventListener('change', loadRecords);
 
 // ========== AUTH STATE OBSERVER ==========
-auth.onAuthStateChanged(async (user) => {
-    // Hide splash
+console.log('🔌 Setting up auth observer...');
+
+auth.onAuthStateChanged((user) => {
+    console.log('🔄 Auth state changed:', user ? user.email : 'No user');
+    
+    // Hide splash immediately
     document.getElementById('splashScreen').classList.add('hidden');
     
     currentUser = user;
     
     if (user) {
         isVerified = user.emailVerified;
-        
         if (!isVerified) {
             showScreen('verifyScreen');
             document.getElementById('verifyEmailDisplay').textContent = user.email;
         } else {
-            await initApp();
+            initApp().catch(err => {
+                console.error('❌ Init failed:', err);
+                showScreen('authScreen');
+            });
         }
     } else {
-        // Logged out
         currentUser = null;
         userRole = 'user';
         todayAttendance = null;
@@ -710,3 +716,6 @@ auth.onAuthStateChanged(async (user) => {
         showScreen('authScreen');
     }
 });
+
+// ========== INITIAL STATE ==========
+console.log('📦 App loaded, waiting for auth...');
