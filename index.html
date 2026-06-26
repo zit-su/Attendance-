@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AttendEase - Attendance App</title>
+
+    <!-- Firebase SDKs (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <!-- Your CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- AUTH PAGE -->
+    <div id="authPage" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <div class="icon">📋</div>
+                <h1>AttendEase</h1>
+                <p>Smart Attendance Tracking</p>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tabLogin">Login</button>
+                <button class="auth-tab" id="tabRegister">Register</button>
+            </div>
+            <div id="alertBox" class="alert"></div>
+
+            <!-- Login Form -->
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
+                <button type="button" class="btn btn-outline btn-sm" id="resendVerifyBtn" style="margin-top:10px;">
+                    Resend Verification Email
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="hidden">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="regName" placeholder="John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="regEmail" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="regPassword" placeholder="Min 6 characters" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" id="registerBtn">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- USER DASHBOARD -->
+    <div id="dashboardPage" class="app-container hidden">
+        <div class="app-header">
+            <div class="user-info">
+                <div class="avatar" id="dashAvatar">U</div>
+                <div class="user-details">
+                    <div class="name" id="dashName">User</div>
+                    <div class="role" id="dashRole">user</div>
+                </div>
+                <span id="verifyBadge" class="badge badge-unverified">Unverified</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-outline" id="btnGoAdmin" style="display:none;">
+                    ⚙️ Admin Panel
+                </button>
+                <button class="btn btn-sm btn-outline" id="resendVerifyDashBtn">
+                    📧 Resend Verify
+                </button>
+                <button class="btn btn-sm btn-danger" id="logoutBtn">🚪 Logout</button>
+            </div>
+        </div>
+
+        <div class="card" style="text-align:center;">
+            <h3 id="todayDate">Today's Date</h3>
+            <p id="attendanceStatus" style="color:var(--text-light);">Loading...</p>
+            <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+                <button class="check-btn check-in-btn" id="checkInBtn">
+                    <span class="btn-icon">✅</span> Check In
+                </button>
+                <button class="check-btn check-out-btn" id="checkOutBtn" disabled>
+                    <span class="btn-icon">🏁</span> Check Out
+                </button>
+            </div>
+            <p style="font-size:12px;color:var(--text-light);margin-top:8px;" id="checkTimeInfo"></p>
+        </div>
+
+        <div class="card">
+            <h3>📅 My Attendance History</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Status</th></tr>
+                    </thead>
+                    <tbody id="myAttendanceBody">
+                        <tr><td colspan="4" class="loading"><div class="spinner"></div>Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="adminPage" class="app-container hidden">
+        <div class="app-header">
+            <div class="user-info">
+                <div class="avatar" id="adminAvatar">A</div>
+                <div class="user-details">
+                    <div class="name" id="adminName">Admin</div>
+                    <div class="role">Administrator</div>
+                </div>
+                <span class="badge badge-admin">Admin</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-outline" id="goDashboardBtn">📋 Dashboard</button>
+                <button class="btn btn-sm btn-danger" id="adminLogoutBtn">🚪 Logout</button>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="adminStats">
+            <div class="stat-card"><div class="stat-value" id="statTotalUsers">-</div><div class="stat-label">Total Users</div></div>
+            <div class="stat-card"><div class="stat-value" id="statTodayCheckins">-</div><div class="stat-label">Today's Check-ins</div></div>
+            <div class="stat-card"><div class="stat-value" id="statTotalRecords">-</div><div class="stat-label">Total Records</div></div>
+            <div class="stat-card"><div class="stat-value" id="statAvgCheckin">-</div><div class="stat-label">Avg Check-in Time</div></div>
+        </div>
+
+        <div class="card">
+            <h3>👥 All Users</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+                    <tbody id="allUsersBody">
+                        <tr><td colspan="4" class="loading"><div class="spinner"></div>Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📋 All Attendance Records</h3>
+            <div class="filter-row">
+                <input type="date" id="filterDate" title="Filter by date">
+                <input type="text" id="filterUser" placeholder="Search by name/email...">
+                <button class="btn btn-sm btn-outline" id="refreshAttendanceBtn">🔄 Refresh</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>User</th><th>Email</th><th>Date</th><th>Check In</th><th>Check Out</th><th>Status</th></tr></thead>
+                    <tbody id="allAttendanceBody">
+                        <tr><td colspan="6" class="loading"><div class="spinner"></div>Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Your JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
