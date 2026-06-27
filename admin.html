@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TPT Admin - Attendance & Payments</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <div id="adminScreen" class="screen active">
+            <header class="app-header">
+                <div class="header-left">
+                    <span class="header-title"><i class="fas fa-user-shield"></i> Admin Panel</span>
+                </div>
+                <div class="header-right">
+                    <button id="adminLogoutBtn" class="icon-btn logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <!-- Employee List -->
+                <div class="card">
+                    <h3><i class="fas fa-users"></i> Employees</h3>
+                    <div id="employeeListContainer" style="max-height: 250px; overflow-y: auto;">
+                        <div class="empty-state"><i class="fas fa-user-slash"></i><p>No employees found</p></div>
+                    </div>
+                    <button id="addEmployeeBtn" class="btn btn-primary btn-block" style="margin-top: 1rem;">
+                        <i class="fas fa-plus"></i> Add Employee
+                    </button>
+                </div>
+
+                <!-- Attendance Overview -->
+                <div class="card">
+                    <h3><i class="fas fa-calendar-check"></i> Today's Attendance</h3>
+                    <div id="todayAttendanceList">
+                        <div class="empty-state"><i class="far fa-calendar-alt"></i><p>No records for today</p></div>
+                    </div>
+                </div>
+
+                <!-- Payout Processing -->
+                <div class="card">
+                    <h3><i class="fas fa-money-check-alt"></i> Process Payouts</h3>
+                    <div class="input-group" style="margin-bottom: 1rem;">
+                        <label>Select Month</label>
+                        <input type="month" id="payoutMonth" class="form-input" style="width: 100%; padding: 0.7rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    </div>
+                    <button id="processPayoutBtn" class="btn btn-primary btn-block">
+                        <i class="fas fa-calculator"></i> Calculate & Mark Paid
+                    </button>
+                    <div id="payoutResult" style="margin-top: 1rem;"></div>
+                </div>
+            </main>
+
+            <nav class="bottom-nav">
+                <a href="admin.html" class="nav-item active"><i class="fas fa-tachometer-alt"></i><span>Admin</span></a>
+                <a href="index.html" class="nav-item"><i class="fas fa-home"></i><span>Employee</span></a>
+                <a href="payout.html" class="nav-item"><i class="fas fa-file-invoice-dollar"></i><span>Payouts</span></a>
+            </nav>
+        </div>
+
+        <!-- Add Employee Modal -->
+        <div id="addEmpModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:30; align-items:center; justify-content:center;">
+            <div class="modal-content" style="background:white; border-radius:20px; padding:1.5rem; width:90%; max-width:400px;">
+                <h2>Add Employee</h2>
+                <form id="addEmpForm">
+                    <input type="text" id="newEmpId" placeholder="Employee ID (e.g. EMP005)" required style="width:100%; padding:0.8rem; margin-bottom:0.8rem; border-radius:12px; border:1px solid #e2e8f0;">
+                    <input type="text" id="newEmpName" placeholder="Full Name" required style="width:100%; padding:0.8rem; margin-bottom:0.8rem; border-radius:12px; border:1px solid #e2e8f0;">
+                    <input type="text" id="newEmpDept" placeholder="Department" required style="width:100%; padding:0.8rem; margin-bottom:0.8rem; border-radius:12px; border:1px solid #e2e8f0;">
+                    <input type="number" id="newEmpRate" placeholder="Rate per Day (₹)" required style="width:100%; padding:0.8rem; margin-bottom:0.8rem; border-radius:12px; border:1px solid #e2e8f0;">
+                    <input type="password" id="newEmpPin" placeholder="PIN (6 digits)" maxlength="6" required style="width:100%; padding:0.8rem; margin-bottom:1rem; border-radius:12px; border:1px solid #e2e8f0;">
+                    <div style="display:flex; gap:0.5rem;">
+                        <button type="button" id="cancelAddEmp" class="btn btn-danger" style="flex:1;">Cancel</button>
+                        <button type="submit" class="btn btn-primary" style="flex:1;">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="toast-container" id="toastContainer"></div>
+        <div class="loading-overlay" id="loadingOverlay" style="display:none;"><div class="spinner"></div><p>Processing...</p></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
