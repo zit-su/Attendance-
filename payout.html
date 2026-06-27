@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TPT Payout History</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <div id="payoutScreen" class="screen active">
+            <header class="app-header">
+                <div class="header-left">
+                    <span class="header-title"><i class="fas fa-wallet"></i> My Payouts</span>
+                </div>
+                <div class="header-right">
+                    <span class="employee-badge" id="payoutEmpId">EMP001</span>
+                    <button id="payoutLogoutBtn" class="icon-btn logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="card">
+                    <h3><i class="fas fa-file-invoice-dollar"></i> Monthly Income</h3>
+                    <div id="payoutList">
+                        <div class="empty-state"><i class="fas fa-inbox"></i><p>No payout history</p></div>
+                    </div>
+                </div>
+            </main>
+
+            <nav class="bottom-nav">
+                <a href="index.html" class="nav-item"><i class="fas fa-home"></i><span>Home</span></a>
+                <a href="payout.html" class="nav-item active"><i class="fas fa-file-invoice-dollar"></i><span>Payouts</span></a>
+                <a href="admin.html" class="nav-item"><i class="fas fa-user-shield"></i><span>Admin</span></a>
+            </nav>
+        </div>
+        <div class="toast-container" id="toastContainer"></div>
+        <div class="loading-overlay" id="loadingOverlay" style="display:none;"><div class="spinner"></div><p>Loading...</p></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/payout.js"></script>
+</body>
+</html>
