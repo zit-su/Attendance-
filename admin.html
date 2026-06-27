@@ -10,7 +10,7 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Admin Login Screen (shown first) -->
+        <!-- Admin Login Screen -->
         <div id="adminLoginScreen" class="screen active">
             <div class="login-wrapper">
                 <div class="logo-section">
@@ -33,7 +33,7 @@
             </div>
         </div>
 
-        <!-- Admin Dashboard (hidden until PIN verified) -->
+        <!-- Admin Dashboard -->
         <div id="adminDashboard" class="screen">
             <header class="app-header">
                 <div class="header-left">
@@ -56,11 +56,39 @@
                     </button>
                 </div>
 
-                <!-- Attendance Overview -->
+                <!-- Today's Attendance -->
                 <div class="card">
                     <h3><i class="fas fa-calendar-check"></i> Today's Attendance</h3>
                     <div id="todayAttendanceList">
                         <div class="empty-state"><i class="far fa-calendar-alt"></i><p>No records for today</p></div>
+                    </div>
+                </div>
+
+                <!-- 🔥 NEW: Attendance Correction Card -->
+                <div class="card">
+                    <h3><i class="fas fa-edit"></i> Attendance Correction</h3>
+                    <div class="input-group" style="margin-bottom: 0.8rem;">
+                        <label>Select Employee</label>
+                        <select id="correctionEmp" style="width:100%; padding:0.7rem; border-radius:12px; border:1px solid #e2e8f0;">
+                            <option value="">— Choose —</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0.8rem;">
+                        <label>Date</label>
+                        <input type="date" id="correctionDate" style="width:100%; padding:0.7rem; border-radius:12px; border:1px solid #e2e8f0;">
+                    </div>
+                    <div id="correctionCurrent" style="margin-bottom: 0.8rem; font-size:0.85rem; color:#64748b;"></div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        <button id="markHalfDayBtn" class="btn btn-warning" style="flex:1;"><i class="fas fa-adjust"></i> Half Day</button>
+                        <button id="markAbsentBtn" class="btn btn-danger" style="flex:1;"><i class="fas fa-times-circle"></i> Absent</button>
+                        <button id="setOTBtn" class="btn btn-primary" style="flex:1;"><i class="fas fa-clock"></i> Set OT</button>
+                    </div>
+                    <div id="otInputArea" style="display:none; margin-top:0.8rem;">
+                        <div class="input-group">
+                            <label>OT Amount (₹)</label>
+                            <input type="number" id="otAmount" placeholder="300" min="0" style="width:100%; padding:0.7rem; border-radius:12px; border:1px solid #e2e8f0;">
+                        </div>
+                        <button id="saveOTBtn" class="btn btn-success btn-block" style="margin-top:0.5rem;"><i class="fas fa-save"></i> Save OT</button>
                     </div>
                 </div>
 
