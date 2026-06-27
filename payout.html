@@ -30,10 +30,13 @@
                 </div>
             </main>
 
+            <!-- Bottom nav – Admin link only shown if user is admin -->
             <nav class="bottom-nav">
                 <a href="index.html" class="nav-item"><i class="fas fa-home"></i><span>Home</span></a>
                 <a href="payout.html" class="nav-item active"><i class="fas fa-file-invoice-dollar"></i><span>Payouts</span></a>
-                <a href="admin.html" class="nav-item"><i class="fas fa-user-shield"></i><span>Admin</span></a>
+                <a href="admin.html" id="adminNavLink" class="nav-item" style="display: none;">
+                    <i class="fas fa-user-shield"></i><span>Admin</span>
+                </a>
             </nav>
         </div>
         <div class="toast-container" id="toastContainer"></div>
