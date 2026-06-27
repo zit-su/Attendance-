@@ -1,25 +1,22 @@
-// admin.js – Full secured admin panel with PIN authentication
+// admin.js – Full secured admin panel with PIN authentication (v2 – fixed comparison)
 
 const adminApp = {
     init() {
-        // Check if already authenticated (session flag)
         if (sessionStorage.getItem('adminAuthenticated') === 'true') {
             this.showDashboard();
             this.loadEmployees();
             this.loadTodayAttendance();
         } else {
-            // Bind login form
             document.getElementById('adminLoginForm').addEventListener('submit', (e) => this.verifyAdminPin(e));
         }
-        
-        // Dashboard buttons
+
         document.getElementById('adminLogoutBtn').addEventListener('click', () => this.logout());
         document.getElementById('addEmployeeBtn').addEventListener('click', () => this.showAddEmpModal());
         document.getElementById('cancelAddEmp').addEventListener('click', () => this.hideAddEmpModal());
         document.getElementById('addEmpForm').addEventListener('submit', (e) => this.addEmployee(e));
         document.getElementById('processPayoutBtn').addEventListener('click', () => this.processPayouts());
     },
-    
+
     // ---------- Authentication ----------
     async verifyAdminPin(e) {
         e.preventDefault();
@@ -28,13 +25,14 @@ const adminApp = {
             this.showToast('Please enter the admin PIN', 'error');
             return;
         }
-        
+
         this.showLoading(true);
         try {
-            // Compare against stored master pin
             const snap = await db.ref('admin/masterPin').once('value');
             const masterPin = snap.val();
-            if (masterPin === pin) {
+
+            // 🔥 FIX: Convert to string to match input type
+            if (String(masterPin) === pin) {
                 sessionStorage.setItem('adminAuthenticated', 'true');
                 this.showDashboard();
                 this.loadEmployees();
@@ -51,17 +49,17 @@ const adminApp = {
             this.showLoading(false);
         }
     },
-    
+
     showDashboard() {
         document.getElementById('adminLoginScreen').classList.remove('active');
         document.getElementById('adminDashboard').classList.add('active');
     },
-    
+
     logout() {
         sessionStorage.removeItem('adminAuthenticated');
         window.location.href = 'index.html';
     },
-    
+
     // ---------- Employee Management ----------
     async loadEmployees() {
         try {
@@ -69,17 +67,17 @@ const adminApp = {
             const data = snap.val();
             const container = document.getElementById('employeeListContainer');
             container.innerHTML = '';
-            
+
             if (!data) {
                 container.innerHTML = '<div class="empty-state"><i class="fas fa-user-slash"></i><p>No employees yet</p></div>';
                 return;
             }
-            
+
             const table = document.createElement('table');
             table.className = 'admin-table';
             table.innerHTML = '<thead><tr><th>ID</th><th>Name</th><th>Dept</th><th>Rate</th></tr></thead><tbody></tbody>';
             const tbody = table.querySelector('tbody');
-            
+
             Object.entries(data).forEach(([id, emp]) => {
                 const row = tbody.insertRow();
                 row.innerHTML = `
@@ -89,21 +87,21 @@ const adminApp = {
                     <td>₹${emp.ratePerDay}</td>
                 `;
             });
-            
+
             container.appendChild(table);
         } catch (error) {
             this.showToast('Failed to load employees', 'error');
         }
     },
-    
+
     showAddEmpModal() {
         document.getElementById('addEmpModal').style.display = 'flex';
     },
-    
+
     hideAddEmpModal() {
         document.getElementById('addEmpModal').style.display = 'none';
     },
-    
+
     async addEmployee(e) {
         e.preventDefault();
         const id = document.getElementById('newEmpId').value.trim().toUpperCase();
@@ -111,12 +109,12 @@ const adminApp = {
         const dept = document.getElementById('newEmpDept').value.trim();
         const rate = document.getElementById('newEmpRate').value;
         const pin = document.getElementById('newEmpPin').value;
-        
+
         if (!id || !name || !dept || !rate || !pin) {
             this.showToast('All fields are required', 'error');
             return;
         }
-        
+
         this.showLoading(true);
         try {
             await db.ref(`employees/${id}`).set({
@@ -125,7 +123,7 @@ const adminApp = {
                 ratePerDay: parseFloat(rate),
                 pin,
                 email: '',
-                role: 'employee'   // default role, not admin
+                role: 'employee'
             });
             this.showToast(`Employee ${id} added successfully!`, 'success');
             this.hideAddEmpModal();
@@ -137,7 +135,7 @@ const adminApp = {
             this.showLoading(false);
         }
     },
-    
+
     // ---------- Attendance ----------
     async loadTodayAttendance() {
         const today = new Date().toISOString().split('T')[0];
@@ -146,12 +144,12 @@ const adminApp = {
             const allData = snap.val();
             const container = document.getElementById('todayAttendanceList');
             container.innerHTML = '';
-            
+
             if (!allData) {
                 container.innerHTML = '<div class="empty-state"><i class="far fa-calendar-alt"></i><p>No records for today</p></div>';
                 return;
             }
-            
+
             let hasRecords = false;
             Object.entries(allData).forEach(([empId, dates]) => {
                 if (dates[today]) {
@@ -173,7 +171,7 @@ const adminApp = {
                     container.appendChild(div);
                 }
             });
-            
+
             if (!hasRecords) {
                 container.innerHTML = '<div class="empty-state"><i class="far fa-calendar-alt"></i><p>No attendance yet today</p></div>';
             }
@@ -181,7 +179,7 @@ const adminApp = {
             this.showToast('Failed to load attendance', 'error');
         }
     },
-    
+
     // ---------- Payout Processing ----------
     async processPayouts() {
         const monthInput = document.getElementById('payoutMonth').value;
@@ -189,31 +187,29 @@ const adminApp = {
             this.showToast('Please select a month', 'error');
             return;
         }
-        
+
         const [year, month] = monthInput.split('-');
         const monthKey = `${year}-${month}`;
-        
+
         this.showLoading(true);
         try {
-            // Get all employees
             const empSnap = await db.ref('employees').once('value');
             const employees = empSnap.val();
             if (!employees) {
                 this.showToast('No employees found', 'error');
                 return;
             }
-            
+
             const payoutResultDiv = document.getElementById('payoutResult');
             payoutResultDiv.innerHTML = '';
             let resultsHtml = '<table class="admin-table"><thead><tr><th>Emp</th><th>Days</th><th>Amount</th><th>Status</th></tr></thead><tbody>';
-            
+
             for (const [empId, emp] of Object.entries(employees)) {
-                // Get attendance for the selected month
                 const attSnap = await db.ref(`attendance/${empId}`).once('value');
                 const attData = attSnap.val();
                 let totalDays = 0;
                 let totalHours = 0;
-                
+
                 if (attData) {
                     Object.entries(attData).forEach(([date, record]) => {
                         if (date.startsWith(monthKey) && record.checkIn) {
@@ -224,14 +220,12 @@ const adminApp = {
                         }
                     });
                 }
-                
+
                 const amount = totalDays * (emp.ratePerDay || 0);
-                
-                // Check existing payout
+
                 const payoutSnap = await db.ref(`payouts/${empId}/${monthKey}`).once('value');
                 const existing = payoutSnap.val();
-                
-                // If not already paid, mark as paid
+
                 if (!existing || existing.paid !== true) {
                     await db.ref(`payouts/${empId}/${monthKey}`).set({
                         totalDays,
@@ -242,7 +236,7 @@ const adminApp = {
                         ratePerDay: emp.ratePerDay
                     });
                 }
-                
+
                 const paidStatus = existing?.paid ? '✅ Paid' : '🔄 Updated';
                 resultsHtml += `
                     <tr>
@@ -252,7 +246,7 @@ const adminApp = {
                         <td>${paidStatus}</td>
                     </tr>`;
             }
-            
+
             resultsHtml += '</tbody></table>';
             payoutResultDiv.innerHTML = resultsHtml;
             this.showToast('Payouts processed!', 'success');
@@ -263,7 +257,7 @@ const adminApp = {
             this.showLoading(false);
         }
     },
-    
+
     // ---------- Helpers ----------
     showToast(msg, type = 'info') {
         const container = document.getElementById('toastContainer');
@@ -273,7 +267,7 @@ const adminApp = {
         container.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
     },
-    
+
     showLoading(show) {
         const overlay = document.getElementById('loadingOverlay');
         if (overlay) {
@@ -282,5 +276,4 @@ const adminApp = {
     }
 };
 
-// Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => adminApp.init());
