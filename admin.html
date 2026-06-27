@@ -3,14 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TPT Admin - Attendance & Payments</title>
+    <title>TPT Admin - Secure Panel</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="app-container">
-        <div id="adminScreen" class="screen active">
+        <!-- Admin Login Screen (shown first) -->
+        <div id="adminLoginScreen" class="screen active">
+            <div class="login-wrapper">
+                <div class="logo-section">
+                    <div class="logo-icon"><i class="fas fa-user-shield"></i></div>
+                    <h1 class="app-title">Admin Access</h1>
+                    <p class="app-subtitle">Secure Authentication Required</p>
+                </div>
+                <div class="login-card">
+                    <form id="adminLoginForm" class="login-form">
+                        <div class="input-group">
+                            <label><i class="fas fa-lock"></i> Admin PIN</label>
+                            <input type="password" id="adminPin" placeholder="Enter admin PIN" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-unlock-alt"></i> Unlock Panel
+                        </button>
+                    </form>
+                </div>
+                <p class="powered-by">TPT Solutions &copy; 2026</p>
+            </div>
+        </div>
+
+        <!-- Admin Dashboard (hidden until PIN verified) -->
+        <div id="adminDashboard" class="screen">
             <header class="app-header">
                 <div class="header-left">
                     <span class="header-title"><i class="fas fa-user-shield"></i> Admin Panel</span>
@@ -45,7 +69,7 @@
                     <h3><i class="fas fa-money-check-alt"></i> Process Payouts</h3>
                     <div class="input-group" style="margin-bottom: 1rem;">
                         <label>Select Month</label>
-                        <input type="month" id="payoutMonth" class="form-input" style="width: 100%; padding: 0.7rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <input type="month" id="payoutMonth" style="width: 100%; padding: 0.7rem; border-radius: 12px; border: 1px solid #e2e8f0;">
                     </div>
                     <button id="processPayoutBtn" class="btn btn-primary btn-block">
                         <i class="fas fa-calculator"></i> Calculate & Mark Paid
@@ -62,11 +86,11 @@
         </div>
 
         <!-- Add Employee Modal -->
-        <div id="addEmpModal" class="modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:30; align-items:center; justify-content:center;">
-            <div class="modal-content" style="background:white; border-radius:20px; padding:1.5rem; width:90%; max-width:400px;">
+        <div id="addEmpModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:30; align-items:center; justify-content:center;">
+            <div style="background:white; border-radius:20px; padding:1.5rem; width:90%; max-width:400px;">
                 <h2>Add Employee</h2>
                 <form id="addEmpForm">
-                    <input type="text" id="newEmpId" placeholder="Employee ID (e.g. EMP005)" required style="width:100%; padding:0.8rem; margin-bottom:0.8rem; border-radius:12px; border:1px solid #e2e8f0;">
+                    <input type="text" id="newEmpId" placeholder="Employee ID" required style="width:100%; padding:0.8rem; margin-bottom:0.8rem; border-radius:12px; border:1px solid #e2e8f0;">
                     <input type="text" id="newEmpName" placeholder="Full Name" required style="width:100%; padding:0.8rem; margin-bottom:0.8rem; border-radius:12px; border:1px solid #e2e8f0;">
                     <input type="text" id="newEmpDept" placeholder="Department" required style="width:100%; padding:0.8rem; margin-bottom:0.8rem; border-radius:12px; border:1px solid #e2e8f0;">
                     <input type="number" id="newEmpRate" placeholder="Rate per Day (₹)" required style="width:100%; padding:0.8rem; margin-bottom:0.8rem; border-radius:12px; border:1px solid #e2e8f0;">
